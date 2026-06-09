@@ -73,7 +73,7 @@ metric_definitions / instrument_metric_snapshots
 etf_holdings
 ```
 
-It should **not** contain provider-specific code. It should **not** directly call Alpaca, Finnhub, Tiingo, etc.
+It should **not** contain provider-specific code. It should **not** directly call Massive, Finnhub, Tiingo, etc.
 
 Instead, it calls the Market Data API over HTTP using a `MarketDataClient`.
 

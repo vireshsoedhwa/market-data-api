@@ -39,7 +39,7 @@ Market Data API (port 8010)
    ├── Redis (rate limits, queues)
    ├── TimescaleDB / market_data schema
    └── Market Data Worker (Celery)
-        ├── Alpaca
+        ├── Massive
         ├── Finnhub
         ├── Twelve Data
         ├── StockData.org
@@ -63,7 +63,7 @@ Market Data API answers: "Here is the best available normalized market data."
 The Market Data API owns:
 
 ```text
-provider adapters (Alpaca, Finnhub, Tiingo, Alpha Vantage, FMP, Stooq, etc.)
+provider adapters (Massive, Finnhub, Tiingo, Alpha Vantage, FMP, Stooq, etc.)
 provider router + fallback chain
 provider_symbol_mappings
 latest_price_cache
@@ -153,7 +153,7 @@ GET  /v1/symbols/{symbol}/metadata
   "currency": "USD",
   "price": "123.45",
   "as_of": "2026-06-04T20:45:00Z",
-  "provider": "alpaca",
+  "provider": "massive",
   "data_status": "fresh",
   "source_type": "provider",
   "is_realtime": false,
@@ -217,7 +217,7 @@ Response:
 get_latest_price(symbol):
     1. Check latest_price_cache
     2. If cache fresh → return cached price
-    3. Try Alpaca
+    3. Try Massive
     4. Try Finnhub
     5. Try Twelve Data
     6. Try StockData.org
@@ -227,7 +227,7 @@ get_latest_price(symbol):
 | Priority | Provider | Reason |
 |---:|---|---|
 | 1 | Local quote cache | Fastest, no API call |
-| 2 | Alpaca | Best free option for current US stock prices |
+| 2 | Massive | Real-time US stock prices, 5 req/min free tier |
 | 3 | Finnhub | Good backup for latest quotes |
 | 4 | Twelve Data | Good secondary backup |
 | 5 | StockData.org | Light-use fallback |
@@ -240,20 +240,22 @@ get_daily_history(symbol, start_date, end_date):
     1. Check TimescaleDB price_bars
     2. If coverage >= 95% → return local data
     3. Try Tiingo
-    4. Try Alpha Vantage
-    5. Try FMP (Financial Modeling Prep)
-    6. Try Twelve Data
-    7. Try Stooq backfill
+    4. Try Massive
+    5. Try Alpha Vantage
+    6. Try FMP (Financial Modeling Prep)
+    7. Try Twelve Data
+    8. Try Stooq backfill
 ```
 
 | Priority | Provider | Reason |
 |---:|---|---|
 | 1 | TimescaleDB price_bars | Fastest, no API call |
 | 2 | Tiingo | Good historical EOD provider |
-| 3 | Alpha Vantage | Good for daily adjusted data |
-| 4 | FMP | Useful backup for EOD |
-| 5 | Twelve Data | Backup time-series provider |
-| 6 | Stooq | Useful offline/backfill source |
+| 3 | Massive | OHLCV bars with split adjustment, 5 req/min free |
+| 4 | Alpha Vantage | Good for daily adjusted data |
+| 5 | FMP | Useful backup for EOD |
+| 6 | Twelve Data | Backup time-series provider |
+| 7 | Stooq | Useful offline/backfill source |
 
 ### 8.3 Provider Interface
 
@@ -339,7 +341,7 @@ Provider chain order and cache settings live in a **YAML config file only** (req
 ```yaml
 market_data:
   latest_price_chain:
-    - alpaca
+    - massive
     - finnhub
     - twelvedata
     - stockdata
@@ -347,6 +349,7 @@ market_data:
 
   daily_history_chain:
     - tiingo
+    - massive
     - alpha_vantage
     - fmp
     - twelvedata
@@ -428,7 +431,7 @@ Every market data response includes quality metadata:
 {
   "symbol": "NVDA",
   "price": "123.45",
-  "provider": "alpaca",
+  "provider": "massive",
   "as_of": "2026-06-04T20:45:00Z",
   "data_status": "fresh",
   "is_stale": false,
@@ -713,7 +716,7 @@ CREATE TABLE market_data.provider_rate_limit_rules (
 );
 ```
 
-Example values: `alpaca: 200/60s`, `finnhub: 60/60s`
+Example values: `massive: 5/60s`, `finnhub: 60/60s`
 
 ### 16.10 Provider Request Log
 
@@ -769,8 +772,7 @@ REDIS_URL=redis://redis:6379/0
 
 MARKET_DATA_INTERNAL_API_KEY=change-me
 
-ALPACA_API_KEY=
-ALPACA_API_SECRET=
+MASSIVE_API_KEY=
 FINNHUB_API_KEY=
 TWELVEDATA_API_KEY=
 STOCKDATA_API_KEY=
@@ -798,7 +800,7 @@ apps/
 │   │   │   └── providers.py
 │   │   ├── providers/
 │   │   │   ├── base.py
-│   │   │   ├── alpaca.py
+│   │   │   ├── massive.py
 │   │   │   ├── finnhub.py
 │   │   │   ├── twelvedata.py
 │   │   │   ├── stockdata.py
@@ -880,7 +882,7 @@ volumes:
 - Latest quote endpoint: `GET /v1/quotes/{symbol}`
 - Daily history endpoint: `GET /v1/history/{symbol}`
 - Alpha Vantage daily history provider.
-- Alpaca latest quote provider.
+- Massive latest quote provider.
 - `latest_price_cache` and `price_bars` tables (market_data schema).
 - `provider_symbol_mappings` table.
 - Internal API key auth.

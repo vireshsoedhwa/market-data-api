@@ -8,14 +8,13 @@ class Settings(BaseSettings):
     market_data_internal_api_key: str = "change-me-to-a-long-random-token"
 
     # Provider API keys
-    alpaca_api_key: str = ""
-    alpaca_api_secret: str = ""
     finnhub_api_key: str = ""
     twelvedata_api_key: str = ""
     stockdata_api_key: str = ""
     tiingo_api_key: str = ""
     alpha_vantage_api_key: str = ""
     fmp_api_key: str = ""
+    massive_api_key: str = ""
 
     # Cache TTLs
     latest_price_ttl_minutes_market_open: int = 5

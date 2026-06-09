@@ -1,6 +1,6 @@
 market_data:
   latest_price_chain:
-    - alpaca
+    - massive
     - finnhub
     - twelvedata
     - stockdata
@@ -8,6 +8,7 @@ market_data:
 
   daily_history_chain:
     - tiingo
+    - massive
     - alpha_vantage
     - fmp
     - twelvedata

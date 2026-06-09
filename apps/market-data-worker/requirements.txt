@@ -1,7 +1,7 @@
-celery==5.4.0
+celery==5.6.3
 redis==5.3.0
-sqlalchemy[asyncio]==2.0.41
-asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.50
+asyncpg==0.31.0
 httpx==0.28.1
-pydantic==2.11.3
-pydantic-settings==2.9.1
+pydantic==2.13.4
+pydantic-settings==2.14.1
