@@ -1,0 +1,24 @@
+market_data:
+  latest_price_chain:
+    - alpaca
+    - finnhub
+    - twelvedata
+    - stockdata
+    - daily_close_fallback
+
+  daily_history_chain:
+    - tiingo
+    - alpha_vantage
+    - fmp
+    - twelvedata
+    - stooq
+
+  cache:
+    latest_price_ttl_minutes_market_open: 5
+    latest_price_ttl_minutes_market_closed: 60
+    daily_history_min_coverage_ratio: 0.95
+
+  stale_policy:
+    allow_stale_latest_price: true
+    max_stale_latest_price_hours: 24
+    allow_partial_history: true
