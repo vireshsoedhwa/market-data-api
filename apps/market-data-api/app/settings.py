@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     max_stale_latest_price_hours: int = 24
     allow_partial_history: bool = True
 
+    # Rate limiting
+    rate_limit_requests_per_minute: int = 120
+    rate_limit_batch_max_symbols: int = 50
+
+    # API version
+    api_version: str = "2.0.0"
+
     model_config = {"env_file": ".env.marketdata", "extra": "ignore"}
 
 

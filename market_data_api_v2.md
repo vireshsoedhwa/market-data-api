@@ -45,6 +45,7 @@ The market-data-api becomes the **sole backend service** in this stack. Instead 
 4. **Batch-native** — agents often need N symbols; batch is first-class, not an afterthought
 5. **Fault-transparent** — partial failures are surfaced clearly, never silently swallowed
 6. **Stateless for reads, explicit for writes** — no hidden session state
+7. **Secure by default** — all endpoints require authentication, inputs are strictly validated, internal details are never leaked to unauthenticated callers
 
 ---
 
@@ -232,19 +233,28 @@ This can be a thin adapter layer on top of the same FastAPI service.
 - [ ] Add response wrapper with `request` echo + `meta` block
 - [ ] Rate-limit middleware with headers
 - [ ] Migrate existing v1 routes to v2 format (keep v1 as deprecated alias)
+- [ ] Require auth on all endpoints except `/health`
+- [ ] Input validation middleware (symbol regex, date range checks, batch size cap)
+- [ ] Strip framework-identifying response headers
 
 ### Phase 2 — Enhanced Data
-- [ ] Pagination (cursor-based) on history
-- [ ] Idempotency on refresh endpoint
+- [ ] Pagination (cursor-based) on history with signed cursor tokens
+- [ ] Idempotency on refresh endpoint with key format validation
 - [ ] CSV content negotiation for history
 - [ ] Richer OpenAPI descriptions + request/response examples on every endpoint
 - [ ] Symbol search actually backed by providers
+- [ ] Scoped API keys (`read` / `read-write`) with per-key rate limits in Redis
+- [ ] Per-key daily refresh quota enforcement
+- [ ] Omit `meta.provider` for non-admin keys
 
 ### Phase 3 — MCP Adapter
 - [ ] MCP server wrapper (stdio or SSE transport)
 - [ ] Resource definitions for prices and history
-- [ ] Tool definitions matching v2 endpoints
+- [ ] Tool definitions matching v2 endpoints (static definitions only — no dynamic content)
+- [ ] MCP auth — validate bearer token through shared auth middleware
+- [ ] MCP resource URI validation (same rules as REST path params)
 - [ ] Integration tests with a reference MCP client
+- [ ] Verify MCP requests flow through unified rate-limit middleware
 
 ---
 
@@ -262,11 +272,58 @@ No portfolio-api, no portfolio-worker. Agents consume market-data-api directly.
 
 ---
 
-## Authentication Strategy
+## Authentication & Authorization Strategy
 
-- **Bearer token** for direct HTTP access (unchanged)
-- **MCP auth** via environment variable injection (MCP clients pass credentials at connection time)
-- Future: scoped API keys with per-key rate limits for multi-agent deployments
+- **Bearer token** for direct HTTP access — validated server-side on every request (unchanged mechanism, but now required on all endpoints except `/health`)
+- **Scoped API keys** — each key carries a scope (`read` or `read-write`); `read` keys cannot call `POST /v2/refresh`
+- **Per-key rate limits** — each API key has its own quota tracked in Redis; exhaustion returns `429` with `Retry-After`
+- **MCP auth** — MCP clients pass a bearer token at SSE connection time; the MCP adapter validates it through the same auth middleware as HTTP
+- **Key rotation** — API keys support non-disruptive rotation (old key valid for a grace period after new key is issued)
+
+---
+
+## Security Considerations
+
+### Transport
+
+- **TLS required** — the API must only be served over HTTPS when publicly exposed; HTTP listeners should redirect or refuse
+- **CORS** — strict `Access-Control-Allow-Origin`; default deny, allowlist specific origins if browser-based MCP clients are supported
+- **SSE transport** — same TLS and auth requirements as REST; no unauthenticated SSE connections
+
+### Input Validation
+
+- **Symbol parameters** — strict regex validation (`^[A-Z0-9.\-]{1,10}$`); reject anything else with `400`
+- **Date parameters** — validate format and range (no future dates beyond T+1, no ranges exceeding provider limits)
+- **Batch size** — enforce `max_batch_size` server-side; never trust client-supplied counts
+- **Cursor / pagination tokens** — signed or opaque tokens; reject tampered values
+- **`Idempotency-Key`** — length-limited, alphanumeric+hyphen only
+
+### Information Disclosure
+
+- **Discovery endpoints** (`/v2/capabilities`, `/v2/tools`, `/v2/providers/status`) require authentication; unauthenticated requests get `401`, not a reduced payload
+- **Error responses** — never include stack traces, SQL fragments, or internal hostnames; use only the defined error codes
+- **Response metadata** — the `meta.provider` field is omitted for public-scoped keys; only admin-scoped keys see provider attribution
+- **Headers** — strip `Server`, `X-Powered-By`, and other framework-identifying headers
+
+### Rate Limiting & Abuse Prevention
+
+- **Unified enforcement** — both HTTP and MCP requests pass through the same rate-limit middleware; the MCP adapter must not bypass it
+- **Batch amplification** — a single batch request counts as N requests against the rate limit (where N = number of symbols)
+- **Refresh quota** — `POST /v2/refresh` has a separate per-key daily cap (e.g., 50/day) to prevent job-queue flooding
+- **Slowloris / connection exhaustion** — configure request timeouts and max concurrent connections at the reverse proxy layer
+
+### MCP-Specific
+
+- **Tool definitions are static** — never include dynamic or user-supplied content in MCP tool `name` or `description` fields to prevent prompt injection
+- **Resource URI validation** — `market://` URIs are parsed and validated identically to REST path parameters; no path traversal
+- **No implicit trust** — MCP clients are treated as untrusted; every tool invocation is individually authorized against the key's scope
+
+### Dependency & Infrastructure
+
+- **Secrets management** — API keys, DB credentials, and provider tokens stored in environment variables or a secrets manager; never in code or config files committed to git
+- **Redis ACLs** — the Redis instance should use a dedicated user with restricted command set (no `FLUSHALL`, `CONFIG`, `DEBUG`)
+- **Database** — parameterized queries only (SQLAlchemy handles this); connection pooling with max-connection limits
+- **Container hardening** — run as non-root, read-only filesystem where possible, no unnecessary capabilities
 
 ---
 
