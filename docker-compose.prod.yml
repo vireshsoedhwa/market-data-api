@@ -19,7 +19,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 32M
 
   # ── Infrastructure ──────────────────────────────────────────────────
   db:
@@ -39,16 +39,33 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    # Tune PG for low memory
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - effective_cache_size=64MB
+      - -c
+      - max_connections=20
+      - -c
+      - wal_buffers=1MB
+      - -c
+      - checkpoint_completion_target=0.9
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 160M
 
   redis:
     image: redis:7
     restart: unless-stopped
     # No ports exposed — internal only
-    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.prod} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.prod} --maxmemory 30mb --maxmemory-policy allkeys-lru --save "" --appendonly no
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -57,13 +74,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 48M
 
   # ── Application ─────────────────────────────────────────────────────
   market-data-api:
-    build:
-      context: ./apps/market-data-api
-      dockerfile: Dockerfile.prod
+    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-api:latest
     restart: unless-stopped
     # No ports exposed to host — Caddy proxies internally
     expose:
@@ -87,12 +102,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 100M
 
   market-data-worker:
-    build:
-      context: ./apps/market-data-worker
-      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-worker:latest
     restart: unless-stopped
     env_file:
       - .env.prod
@@ -107,7 +120,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 80M
 
   # ── Backups ─────────────────────────────────────────────────────────
   db-backup:
@@ -130,7 +143,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 48M
 
 volumes:
   stock_db_data:

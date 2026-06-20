@@ -22,8 +22,8 @@
     # Logging
     log {
         output file /data/access.log {
-            roll_size 100MB
-            roll_keep 5
+            roll_size 10MB
+            roll_keep 3
         }
     }
 }

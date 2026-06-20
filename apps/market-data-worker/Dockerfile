@@ -9,4 +9,4 @@ COPY . .
 
 ENV PYTHONPATH="/app"
 
-CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=1", "--pool=solo"]
