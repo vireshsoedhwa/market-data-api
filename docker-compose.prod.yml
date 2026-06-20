@@ -78,7 +78,7 @@ services:
 
   # ── Application ─────────────────────────────────────────────────────
   market-data-api:
-    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-api:latest
+    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # No ports exposed to host — Caddy proxies internally
     expose:
@@ -105,7 +105,7 @@ services:
           memory: 100M
 
   market-data-worker:
-    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-worker:latest
+    image: ghcr.io/${GITHUB_OWNER:?Set GITHUB_OWNER in .env.prod}/market-data-api/market-data-worker:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env.prod
