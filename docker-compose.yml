@@ -41,7 +41,6 @@ services:
         condition: service_healthy
     volumes:
       - ./apps/market-data-api/app:/app/app
-      - ./packages:/app/packages
 
   market-data-worker:
     build: ./apps/market-data-worker
@@ -54,44 +53,6 @@ services:
         condition: service_healthy
     volumes:
       - ./apps/market-data-worker/app:/app/app
-      - ./packages:/app/packages
-
-  # ── Portfolio Services (placeholder) ──────────────────────────────
-  # portfolio-api:
-  #   build: ./apps/portfolio-api
-  #   ports:
-  #     - "8000:8000"
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     MARKET_DATA_BASE_URL: http://market-data-api:8010
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     market-data-api:
-  #       condition: service_started
-  #   volumes:
-  #     - ./apps/portfolio-api/app:/app/app
-  #     - ./packages:/app/packages
-
-  # portfolio-worker:
-  #   build: ./apps/portfolio-worker
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     MARKET_DATA_BASE_URL: http://market-data-api:8010
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     market-data-api:
-  #       condition: service_started
-  #   volumes:
-  #     - ./apps/portfolio-worker/app:/app/app
-  #     - ./packages:/app/packages
 
 volumes:
   stock_db_data:

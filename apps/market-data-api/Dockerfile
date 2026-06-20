@@ -7,8 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Make shared-contracts available (mounted via docker-compose volume)
-ENV PYTHONPATH="/app:/app/packages"
+ENV PYTHONPATH="/app"
 
 EXPOSE 8010
 

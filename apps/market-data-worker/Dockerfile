@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENV PYTHONPATH="/app:/app/packages"
+ENV PYTHONPATH="/app"
 
 CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]

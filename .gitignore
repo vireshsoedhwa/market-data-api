@@ -6,6 +6,8 @@ dist/
 build/
 .eggs/
 *.egg
+.coverage
+.pytest_cache/
 
 # Virtual environments
 .venv/
@@ -21,6 +23,7 @@ env/
 # Environment files with secrets
 .env.marketdata
 .env
+.env.prod
 
 # Docker
 stock_db_data/
