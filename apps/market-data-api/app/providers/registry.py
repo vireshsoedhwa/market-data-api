@@ -13,6 +13,7 @@ import yaml
 from app.providers.base import MarketDataProvider
 from app.providers.finnhub import FinnhubProvider
 from app.providers.massive import MassiveProvider
+from app.providers.tiingo import TiingoProvider
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "providers.yml"
 _PROVIDER_CLASSES: dict[str, type[MarketDataProvider]] = {
     "finnhub": FinnhubProvider,
     "massive": MassiveProvider,
+    "tiingo": TiingoProvider,
 }
 
 # Singleton instances

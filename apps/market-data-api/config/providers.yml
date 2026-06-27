@@ -10,7 +10,6 @@ market_data:
     - tiingo
     - massive
     - alpha_vantage
-    - fmp
     - twelvedata
     - stooq
 

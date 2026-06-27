@@ -88,6 +88,18 @@ class MassiveProvider(MarketDataProvider):
         if not self._api_key:
             raise ProviderError(self.name, "NO_API_KEY", "Massive API key not configured")
 
+        try:
+            return await self._fetch_daily_bars(symbol, start_date, end_date)
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError(
+                self.name, "PARSE_ERROR", f"Failed to fetch/parse history for {symbol}: {exc}"
+            ) from exc
+
+    async def _fetch_daily_bars(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[DailyPriceBarInternal]:
         bars: list[DailyPriceBarInternal] = []
         next_url: str | None = None
 
