@@ -112,12 +112,27 @@ class TestGetLatestPriceChain:
 
 
 class TestGetDailyHistoryChain:
+    async def test_returns_from_db_cache(self):
+        """DB cache hit should return immediately without calling providers."""
+        cached = _make_bars(provider="tiingo")
+        with (
+            patch("app.router.provider_router.get_cached_history", new_callable=AsyncMock, return_value=cached),
+            patch("app.router.provider_router.get_daily_history_chain", return_value=["tiingo"]),
+            patch("app.router.provider_router.get_provider") as mock_prov,
+        ):
+            result = await get_daily_history("AAPL", date(2025, 6, 2), date(2025, 6, 2))
+        assert len(result.bars) == 1
+        assert result.provider_chain_used == ["tiingo"]
+        mock_prov.assert_not_called()
+
     async def test_returns_bars_from_first_provider(self):
         mock_provider = MagicMock()
         mock_provider.supports_daily_history.return_value = True
         mock_provider.get_daily_history = AsyncMock(return_value=_make_bars())
 
         with (
+            patch("app.router.provider_router.get_cached_history", new_callable=AsyncMock, return_value=None),
+            patch("app.router.provider_router.store_history", new_callable=AsyncMock),
             patch("app.router.provider_router.get_daily_history_chain", return_value=["tiingo"]),
             patch("app.router.provider_router.get_provider", return_value=mock_provider),
         ):
@@ -125,6 +140,23 @@ class TestGetDailyHistoryChain:
         assert len(result.bars) == 1
         assert result.provider_chain_used == ["tiingo"]
         assert result.coverage > 0
+
+    async def test_stores_bars_in_cache_after_provider_fetch(self):
+        """After fetching from provider, bars should be stored in DB cache."""
+        mock_provider = MagicMock()
+        mock_provider.supports_daily_history.return_value = True
+        mock_provider.get_daily_history = AsyncMock(return_value=_make_bars())
+
+        mock_store = AsyncMock()
+        with (
+            patch("app.router.provider_router.get_cached_history", new_callable=AsyncMock, return_value=None),
+            patch("app.router.provider_router.store_history", mock_store),
+            patch("app.router.provider_router.get_daily_history_chain", return_value=["tiingo"]),
+            patch("app.router.provider_router.get_provider", return_value=mock_provider),
+        ):
+            await get_daily_history("AAPL", date(2025, 6, 2), date(2025, 6, 2))
+        mock_store.assert_called_once()
+        assert mock_store.call_args[0][0] == "AAPL"
 
     async def test_skips_empty_results(self):
         empty_provider = MagicMock()
@@ -139,6 +171,8 @@ class TestGetDailyHistoryChain:
             return {"fmp": empty_provider, "tiingo": good_provider}[name]
 
         with (
+            patch("app.router.provider_router.get_cached_history", new_callable=AsyncMock, return_value=None),
+            patch("app.router.provider_router.store_history", new_callable=AsyncMock),
             patch("app.router.provider_router.get_daily_history_chain", return_value=["fmp", "tiingo"]),
             patch("app.router.provider_router.get_provider", side_effect=pick),
         ):
@@ -153,6 +187,7 @@ class TestGetDailyHistoryChain:
         bad.get_daily_history = AsyncMock(side_effect=ProviderError("tiingo", "AUTH_ERROR", "bad"))
 
         with (
+            patch("app.router.provider_router.get_cached_history", new_callable=AsyncMock, return_value=None),
             patch("app.router.provider_router.get_daily_history_chain", return_value=["tiingo"]),
             patch("app.router.provider_router.get_provider", return_value=bad),
         ):

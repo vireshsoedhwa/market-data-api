@@ -13,6 +13,7 @@ import logging
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+from app.cache.history_cache import get_cached_history, store_history
 from app.cache.latest_price_cache import get_cached_price, set_cached_price
 from app.providers.base import ProviderError
 from app.providers.registry import (
@@ -110,6 +111,36 @@ async def get_daily_history(
     warnings: list[str] = []
     providers_used: list[str] = []
 
+    # 1. Check DB cache
+    cached_bars = await get_cached_history(symbol, start_date, end_date)
+    if cached_bars is not None:
+        total_weekdays = sum(
+            1 for d in _daterange(start_date, end_date) if d.weekday() < 5
+        )
+        coverage = len(cached_bars) / max(total_weekdays, 1)
+        logger.debug("DB cache hit for %s: %d bars", symbol, len(cached_bars))
+        return HistoryResponse(
+            symbol=symbol,
+            bars=[
+                DailyBarResponse(
+                    symbol=bar.symbol,
+                    date=bar.date,
+                    open=bar.open,
+                    high=bar.high,
+                    low=bar.low,
+                    close=bar.close,
+                    adjusted_close=bar.adjusted_close,
+                    volume=bar.volume,
+                    currency=bar.currency,
+                )
+                for bar in cached_bars
+            ],
+            coverage=round(coverage, 4),
+            provider_chain_used=[cached_bars[0].provider] if cached_bars else ["cache"],
+            warnings=[],
+        )
+
+    # 2. Walk the provider chain
     chain = get_daily_history_chain()
     for name in chain:
         provider = get_provider(name)
@@ -127,6 +158,9 @@ async def get_daily_history(
             )
             coverage = len(bars_internal) / max(total_weekdays, 1)
             providers_used.append(name)
+
+            # 3. Store in DB cache (fire-and-forget)
+            await store_history(symbol, bars_internal, timeframe)
 
             return HistoryResponse(
                 symbol=symbol,
