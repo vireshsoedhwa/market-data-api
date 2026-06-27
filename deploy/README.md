@@ -18,8 +18,8 @@ sudo usermod -aG docker $USER
 
 ```bash
 # 1. Clone the repo on the VPS
-git clone <your-repo-url> /opt/portfolio-dashboard
-cd /opt/portfolio-dashboard
+git clone https://github.com/vireshsoedhwa/market-data-api.git /opt/market-data-api
+cd /opt/market-data-api
 
 # 2. Run setup (configures firewall, creates .env.prod from template)
 ./deploy/deploy.sh setup
@@ -89,7 +89,7 @@ docker cp $(docker compose -f docker-compose.prod.yml ps -q db-backup):/backups 
 
 Health endpoint (no auth required):
 ```bash
-curl https://api.yourdomain.com/health
+curl https://api.mergemind.ca/health
 ```
 
 Check all services:
