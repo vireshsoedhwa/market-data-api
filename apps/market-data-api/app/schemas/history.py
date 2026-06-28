@@ -37,6 +37,7 @@ class HistoryResponse(BaseModel):
     bars: list[DailyBarResponse]
     coverage: float | None = None
     provider_chain_used: list[str] = Field(default_factory=list)
+    source_type: str = "provider"  # "cache" or "provider"
     warnings: list[str] = Field(default_factory=list)
 
 

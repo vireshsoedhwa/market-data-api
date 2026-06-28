@@ -137,6 +137,7 @@ async def get_daily_history(
             ],
             coverage=round(coverage, 4),
             provider_chain_used=[cached_bars[0].provider] if cached_bars else ["cache"],
+            source_type="cache",
             warnings=[],
         )
 

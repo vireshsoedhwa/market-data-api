@@ -34,7 +34,7 @@ async def get_history(
         data=result.model_dump(mode="json"),
         meta=ResponseMeta(
             provider=result.provider_chain_used[0] if result.provider_chain_used else None,
-            source_type="provider",
+            source_type=result.source_type,
             confidence="high" if result.coverage and result.coverage > 0.9 else "low",
             as_of=datetime.now(timezone.utc),
             warnings=result.warnings,
